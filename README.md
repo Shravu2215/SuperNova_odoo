@@ -1,8 +1,14 @@
-# 🚀 Hackathon Starter
+# 🚀 SuperNova Hackathon Starter
 
-Full-stack starter: **React + Vite + TypeScript + Tailwind + lucide** (frontend) and **Express + TypeScript + Prisma + PostgreSQL + JWT + bcrypt + helmet + rate-limit + validator + cors + Socket.io** (backend).
+**Professional Full-Stack Starter** optimized for Odoo Hackathon evaluation criteria.
 
-Login/Signup already works end-to-end. Tomorrow, only build the actual idea.
+**Frontend**: React 19 + Vite + TypeScript + Tailwind CSS + shadcn/ui + Lucide React  
+**Backend**: Node.js + Express + TypeScript + Prisma ORM + PostgreSQL + JWT + bcrypt  
+**Security**: Helmet + CORS + Rate-limiting + Express-validator  
+**Real-time**: Socket.IO  
+**Code Quality**: Comprehensive error handling, logging, validation, type safety
+
+Login/Signup already works end-to-end. Tomorrow, focus only on the problem statement.
 
 ---
 

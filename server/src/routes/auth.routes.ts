@@ -2,6 +2,7 @@ import { Router } from "express";
 import { body } from "express-validator";
 import { register, login, me } from "../controllers/auth.controller";
 import { requireAuth } from "../middleware/auth.middleware";
+import { isStrongPassword } from "../utils/validators";
 
 const router = Router();
 
@@ -9,11 +10,23 @@ const router = Router();
 router.post(
   "/register",
   [
-    body("name").trim().notEmpty().withMessage("Name is required"),
-    body("email").isEmail().withMessage("Valid email is required"),
+    body("name")
+      .trim()
+      .notEmpty()
+      .withMessage("Name is required")
+      .isLength({ min: 2, max: 255 })
+      .withMessage("Name must be between 2 and 255 characters"),
+    body("email")
+      .isEmail()
+      .withMessage("Valid email is required")
+      .normalizeEmail(),
     body("password")
-      .isLength({ min: 6 })
-      .withMessage("Password must be at least 6 characters"),
+      .isLength({ min: 8 })
+      .withMessage("Password must be at least 8 characters")
+      .custom((value) => isStrongPassword(value))
+      .withMessage(
+        "Password must contain at least 1 uppercase letter, 1 number, and 1 special character (@$!%*?&)"
+      ),
   ],
   register
 );
@@ -22,13 +35,16 @@ router.post(
 router.post(
   "/login",
   [
-    body("email").isEmail().withMessage("Valid email is required"),
+    body("email")
+      .isEmail()
+      .withMessage("Valid email is required")
+      .normalizeEmail(),
     body("password").notEmpty().withMessage("Password is required"),
   ],
   login
 );
 
-// GET /api/auth/me  (needs token)
+// GET /api/auth/me (needs token)
 router.get("/me", requireAuth, me);
 
 export default router;
