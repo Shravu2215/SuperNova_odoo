@@ -1,26 +1,34 @@
-// Put this middleware on any route that should require login.
-// Usage:  router.get("/secret", requireAuth, handler)
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { env } from "../config/env";
+import { AppError } from "./error.middleware";
 
-export function requireAuth(req: Request, res: Response, next: NextFunction) {
-  // Frontend sends:  Authorization: Bearer <token>
+export interface AuthPayload {
+  userId: string;
+  email: string;
+  role: string;
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: AuthPayload;
+    }
+  }
+}
+
+export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
-
-  if (!header || !header.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "No token provided" });
+  if (!header?.startsWith("Bearer ")) {
+    return next(new AppError(401, "UNAUTHENTICATED", "No access token provided"));
   }
 
-  const token = header.split(" ")[1];
+  const token = header.slice("Bearer ".length);
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET as string) as {
-      userId: string;
-    };
-    // Attach the user id so controllers know who is calling
-    (req as any).userId = payload.userId;
+    req.user = jwt.verify(token, env.JWT_ACCESS_SECRET) as AuthPayload;
     next();
   } catch {
-    return res.status(401).json({ message: "Invalid or expired token" });
+    next(new AppError(401, "UNAUTHENTICATED", "Invalid or expired access token"));
   }
 }
