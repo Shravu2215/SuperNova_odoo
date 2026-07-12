@@ -3,6 +3,7 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import { sendSuccess } from "../../utils/apiResponse";
 import * as bookingsService from "./bookings.service";
 import { UserRole } from "@prisma/client";
+import { prisma } from "../../config/prisma";
 
 export const createBooking = asyncHandler(async (req: Request, res: Response) => {
   const booking = await bookingsService.createBooking(req.user!.userId, req.body);
@@ -15,7 +16,14 @@ export const updateBookingStatus = asyncHandler(async (req: Request, res: Respon
 });
 
 export const getAllBookings = asyncHandler(async (req: Request, res: Response) => {
-  const result = await bookingsService.listBookings(req.query);
+  const query: any = { ...req.query };
+  if (req.user!.role === "DEPARTMENT_HEAD") {
+    const head = await prisma.employee.findUnique({ where: { id: req.user!.userId } });
+    if (head) {
+      query.deptId = head.deptId;
+    }
+  }
+  const result = await bookingsService.listBookings(query);
   sendSuccess(res, { items: result });
 });
 

@@ -7,9 +7,10 @@ import { createDepartmentSchema, updateDepartmentSchema } from "./departments.sc
 
 const router = Router();
 
-router.use(requireAuth);
-
+// Public: the signup form needs to list departments before the user is authenticated.
 router.get("/", getDepartments);
+
+router.use(requireAuth);
 
 router.post("/", requireRole("ADMIN"), validate(createDepartmentSchema), createDepartment);
 router.patch("/:id", requireRole("ADMIN"), validate(updateDepartmentSchema), updateDepartment);

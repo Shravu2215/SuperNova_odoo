@@ -11,6 +11,7 @@ export const signupSchema = z
       .regex(/[0-9]/, "Password must contain a number")
       .regex(/[@$!%*?&]/, "Password must contain a special character (@$!%*?&)"),
     deptId: z.string().min(1, "Department ID is required"),
+    role: z.enum(["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD", "EMPLOYEE"]).optional(),
   })
   .strict();
 

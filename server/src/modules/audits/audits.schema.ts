@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { AuditAssignmentStatus } from "@prisma/client";
 
 export const createAuditCycleSchema = z.object({
-  name: z.string().min(1),
+  scopeDeptId: z.string().optional().nullable(),
   startDate: z.string().datetime(),
   endDate: z.string().datetime(),
 }).strict();
@@ -14,6 +15,6 @@ export const assignAuditSchema = z.object({
 }).strict();
 
 export const submitAuditSchema = z.object({
-  status: z.enum(["VERIFIED", "DISCREPANCY"]),
+  status: z.enum([AuditAssignmentStatus.VERIFIED, AuditAssignmentStatus.MISSING, AuditAssignmentStatus.DAMAGED]),
   notes: z.string().optional(),
 }).strict();

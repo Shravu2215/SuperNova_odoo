@@ -9,7 +9,7 @@ const router = Router();
 
 router.use(requireAuth);
 
-router.get("/", requireRole("ADMIN", "ASSET_MANAGER"), getAllBookings);
+router.get("/", requireRole("ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD"), getAllBookings);
 router.get("/my", getMyBookings);
 
 router.post("/", validate(createBookingSchema), createBooking);

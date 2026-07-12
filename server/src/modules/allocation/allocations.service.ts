@@ -65,8 +65,17 @@ export async function requestTransfer(id: string, actorId: string, newEmployeeId
 }
 
 export async function approveAllocation(id: string, actorId: string, actorRole: UserRole) {
-  if (actorRole !== UserRole.ADMIN && actorRole !== UserRole.ASSET_MANAGER) {
-    throw new AppError(403, "FORBIDDEN", "Only managers can approve allocations");
+  if (actorRole === UserRole.DEPARTMENT_HEAD) {
+    const head = await prisma.employee.findUnique({ where: { id: actorId } });
+    const alloc = await prisma.assetAllocation.findUnique({
+      where: { id },
+      include: { allocatedToEmployee: true }
+    });
+    if (!alloc || !head || !alloc.allocatedToEmployee || alloc.allocatedToEmployee.deptId !== head.deptId) {
+      throw new AppError(403, "FORBIDDEN", "Only the department head of the requesting employee can approve this request");
+    }
+  } else if (actorRole !== UserRole.ADMIN && actorRole !== UserRole.ASSET_MANAGER) {
+    throw new AppError(403, "FORBIDDEN", "Only managers or department heads can approve allocations");
   }
 
   return await prisma.$transaction(async (tx) => {
@@ -143,6 +152,11 @@ export async function listAllocations(filters: any) {
   if (filters.status) where.status = filters.status;
   if (filters.assetId) where.assetId = filters.assetId;
   if (filters.allocatedToEmployeeId) where.allocatedToEmployeeId = filters.allocatedToEmployeeId;
+  if (filters.deptId) {
+    where.allocatedToEmployee = {
+      deptId: filters.deptId
+    };
+  }
 
   const [total, items] = await Promise.all([
     prisma.assetAllocation.count({ where }),

@@ -9,12 +9,12 @@ const router = Router();
 
 router.use(requireAuth);
 
-router.get("/", requireRole("ADMIN", "ASSET_MANAGER"), getAllocations);
+router.get("/", requireRole("ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD"), getAllocations);
 router.get("/my", getMyAllocations);
 
 router.post("/", validate(allocateAssetSchema), allocateAsset);
 router.post("/:id/transfer", validate(requestTransferSchema), requestTransfer);
-router.put("/:id/approve", requireRole("ADMIN", "ASSET_MANAGER"), approveAllocation);
+router.put("/:id/approve", requireRole("ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD"), approveAllocation);
 router.put("/:id/return", validate(returnAssetSchema), returnAsset);
 
 export default router;

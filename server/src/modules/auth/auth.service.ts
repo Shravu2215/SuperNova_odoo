@@ -37,7 +37,13 @@ export async function signup(input: SignupInput) {
 
   const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
   const employee = await prisma.employee.create({
-    data: { name: input.name, email: input.email, password: passwordHash, deptId: input.deptId, role: UserRole.EMPLOYEE },
+    data: { 
+      name: input.name, 
+      email: input.email, 
+      password: passwordHash, 
+      deptId: input.deptId, 
+      role: input.role || UserRole.EMPLOYEE 
+    },
   });
 
   return {

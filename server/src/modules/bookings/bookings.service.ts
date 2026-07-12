@@ -19,7 +19,7 @@ export async function createBooking(employeeId: string, input: any) {
     const overlap = await tx.resourceBooking.findFirst({
       where: {
         resourceId: input.assetId,
-        status: { in: [BookingStatus.UPCOMING, BookingStatus.ONGOING] },
+        status: { in: [BookingStatus.PENDING_APPROVAL, BookingStatus.UPCOMING, BookingStatus.ONGOING] },
         OR: [
           { startTime: { lt: end }, endTime: { gt: start } }
         ]
@@ -27,7 +27,7 @@ export async function createBooking(employeeId: string, input: any) {
     });
 
     if (overlap) {
-      throw new AppError(409, "CONFLICT", "Asset is already booked for this time period");
+      throw new AppError(409, "CONFLICT", "Asset is already booked or pending approval for this time period");
     }
 
     const booking = await tx.resourceBooking.create({
@@ -37,14 +37,14 @@ export async function createBooking(employeeId: string, input: any) {
         startTime: start,
         endTime: end,
         notes: input.purpose,
-        status: BookingStatus.UPCOMING,
+        status: BookingStatus.PENDING_APPROVAL,
       }
     });
 
     await logActivity(employeeId, "BOOKING_CREATED", "ASSET", input.assetId, { bookingId: booking.id });
     return booking;
   }).then(async (res) => {
-    await notify(employeeId, NotificationType.BOOKING_CONFIRMED, `Booking confirmed for asset ${input.assetId}`);
+    await notify(employeeId, NotificationType.BOOKING_REMINDER, `Booking request submitted for asset ${input.assetId}`);
     try {
       const io = getIO();
       emitGlobal(io, SocketEvent.BOOKING_CREATED, res);
@@ -58,6 +58,11 @@ export async function listBookings(filters: any) {
   if (filters.employeeId) where.bookedByEmployeeId = filters.employeeId;
   if (filters.assetId) where.resourceId = filters.assetId;
   if (filters.status) where.status = filters.status;
+  if (filters.deptId) {
+    where.bookedByEmployee = {
+      deptId: filters.deptId
+    };
+  }
 
   return prisma.resourceBooking.findMany({ 
     where,
@@ -70,7 +75,13 @@ export async function updateBookingStatus(id: string, actorId: string, actorRole
   const booking = await prisma.resourceBooking.findUnique({ where: { id } });
   if (!booking) throw new AppError(404, "NOT_FOUND", "Booking not found");
 
-  if (booking.bookedByEmployeeId !== actorId && actorRole !== UserRole.ADMIN && actorRole !== UserRole.ASSET_MANAGER) {
+  if (actorRole === UserRole.DEPARTMENT_HEAD) {
+    const head = await prisma.employee.findUnique({ where: { id: actorId } });
+    const bookedBy = await prisma.employee.findUnique({ where: { id: booking.bookedByEmployeeId } });
+    if (!head || !bookedBy || bookedBy.deptId !== head.deptId) {
+      throw new AppError(403, "FORBIDDEN", "Not authorized to modify this booking (must be in your department)");
+    }
+  } else if (booking.bookedByEmployeeId !== actorId && actorRole !== UserRole.ADMIN && actorRole !== UserRole.ASSET_MANAGER) {
     throw new AppError(403, "FORBIDDEN", "Not authorized to modify this booking");
   }
 
@@ -83,11 +94,16 @@ export async function updateBookingStatus(id: string, actorId: string, actorRole
     await logActivity(actorId, `BOOKING_${status}`, "ASSET", booking.resourceId, { bookingId: id });
     return updated;
   }).then(async (res) => {
-    if (status === BookingStatus.CANCELLED) {
-      await notify(res.bookedByEmployeeId, NotificationType.BOOKING_CANCELLED, `Booking cancelled for asset ${res.resourceId}`);
+    const io = getIO();
+    if (status === BookingStatus.CANCELLED || status === BookingStatus.REJECTED) {
+      await notify(res.bookedByEmployeeId, NotificationType.BOOKING_CANCELLED, `Booking ${status.toLowerCase()} for asset ${res.resourceId}`);
       try {
-        const io = getIO();
-        emitGlobal(io, SocketEvent.BOOKING_CANCELLED, res);
+        if (io) emitGlobal(io, SocketEvent.BOOKING_CANCELLED, res);
+      } catch {}
+    } else if (status === BookingStatus.UPCOMING) {
+      await notify(res.bookedByEmployeeId, NotificationType.BOOKING_CONFIRMED, `Booking approved for asset ${res.resourceId}`);
+      try {
+        if (io) emitGlobal(io, SocketEvent.BOOKING_CREATED, res);
       } catch {}
     }
     return res;

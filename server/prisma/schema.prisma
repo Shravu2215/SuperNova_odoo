@@ -63,10 +63,12 @@ enum MaintenanceStatus {
 }
 
 enum BookingStatus {
+  PENDING_APPROVAL
   UPCOMING
   ONGOING
   COMPLETED
   CANCELLED
+  REJECTED
 }
 
 enum AuditStatus {
