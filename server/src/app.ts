@@ -24,7 +24,7 @@ import dashboardRoutes from "./modules/dashboard/dashboard.routes";
 export const app = express();
 
 app.use(helmet());
-app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
+app.use(cors({ origin: env.CLIENT_URL.replace(/\/$/, ""), credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 app.use(globalRateLimiter);
