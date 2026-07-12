@@ -1,71 +1,103 @@
-// Keeps track of "who is logged in" for the whole app.
-// Use it in any component:
-//   const { user, login, register, logout } = useAuth();
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  ReactNode,
-} from "react";
-import { api } from "@/lib/api";
+// Keeps track of "who is logged in" for the whole app, backed by the real API.
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import * as authApi from '@/services/authApi'
+import { listDepartments } from '@/services/orgApi'
+import { getToken, clearToken } from '@/services/api'
+import type { User, Role } from '@/types'
 
-type User = { id: string; name: string; email: string };
+const USER_CACHE_KEY = 'assetflow_user'
 
-type AuthContextType = {
-  user: User | null;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
-};
+interface AuthContextType {
+  user: User | null
+  isAuthenticated: boolean
+  isLoading: boolean
+  login: (email: string, password: string) => Promise<void>
+  signup: (name: string, email: string, password: string, deptId: string, role?: Role) => Promise<void>
+  logout: () => void
+  hasRole: (roles: Role[]) => boolean
+}
 
-const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+async function resolveDepartmentName(deptId: string): Promise<string> {
+  try {
+    const depts = await listDepartments()
+    return depts.find((d) => d.id === deptId)?.name ?? deptId
+  } catch {
+    return deptId
+  }
+}
+
+function toUser(profile: { id: string; name: string; email: string; role: Role; deptId: string }, departmentName: string): User {
+  return { id: profile.id, name: profile.name, email: profile.email, role: profile.role, deptId: profile.deptId, department: departmentName }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // On page load: if a token is saved, ask the backend who we are
+  // On page load: if a token exists, verify it against the backend rather than
+  // trusting the cached copy (it may have expired or the account may have changed).
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setLoading(false);
-      return;
+    const cached = localStorage.getItem(USER_CACHE_KEY)
+    if (cached) setUser(JSON.parse(cached))
+
+    if (!getToken()) {
+      setIsLoading(false)
+      return
     }
-    api
-      .get("/auth/me")
-      .then((res) => setUser(res.data.user))
-      .catch(() => localStorage.removeItem("token")) // bad/expired token
-      .finally(() => setLoading(false));
-  }, []);
+
+    authApi
+      .me()
+      .then(async (profile) => {
+        const department = await resolveDepartmentName(profile.deptId)
+        const freshUser = toUser(profile, department)
+        setUser(freshUser)
+        localStorage.setItem(USER_CACHE_KEY, JSON.stringify(freshUser))
+      })
+      .catch(() => {
+        clearToken()
+        localStorage.removeItem(USER_CACHE_KEY)
+        setUser(null)
+      })
+      .finally(() => setIsLoading(false))
+  }, [])
 
   async function login(email: string, password: string) {
-    const res = await api.post("/auth/login", { email, password });
-    localStorage.setItem("token", res.data.token);
-    setUser(res.data.user);
+    const profile = await authApi.login(email, password)
+    const department = await resolveDepartmentName(profile.deptId)
+    const loggedInUser = toUser(profile, department)
+    localStorage.setItem(USER_CACHE_KEY, JSON.stringify(loggedInUser))
+    setUser(loggedInUser)
   }
 
-  async function register(name: string, email: string, password: string) {
-    const res = await api.post("/auth/register", { name, email, password });
-    localStorage.setItem("token", res.data.token);
-    setUser(res.data.user);
+  async function signup(name: string, email: string, password: string, deptId: string, role?: Role) {
+    const profile = await authApi.signup(name, email, password, deptId, role)
+    const department = await resolveDepartmentName(profile.deptId)
+    const signedUpUser = toUser(profile, department)
+    localStorage.setItem(USER_CACHE_KEY, JSON.stringify(signedUpUser))
+    setUser(signedUpUser)
   }
 
   function logout() {
-    localStorage.removeItem("token");
-    setUser(null);
+    authApi.logout()
+    localStorage.removeItem(USER_CACHE_KEY)
+    setUser(null)
+  }
+
+  function hasRole(roles: Role[]) {
+    return user ? roles.includes(user.role) : false
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, signup, logout, hasRole }}>
       {children}
     </AuthContext.Provider>
-  );
+  )
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside <AuthProvider>");
-  return ctx;
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
+  return ctx
 }
