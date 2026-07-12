@@ -2,7 +2,7 @@
   "scripts": {
   "build": "tsc",
   "start": "node dist/server.js"
-}
+},
   "name": "server",
   "version": "1.0.0",
   "description": "Hackathon backend - Express + TypeScript + Prisma + PostgreSQL with logging and error handling",
