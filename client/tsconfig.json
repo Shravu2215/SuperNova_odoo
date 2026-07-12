@@ -10,9 +10,8 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "strict": true,
-    "paths": {
-      "@/*": ["./src/*"]
-    },
+    "baseUrl": ".",
+    "paths": { "@/*": ["./src/*"] },
     "types": ["node"]
   },
   "include": ["src"]
