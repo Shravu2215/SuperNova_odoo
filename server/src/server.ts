@@ -7,8 +7,8 @@ import { logger } from "./utils/logger";
 const server = http.createServer(app);
 initSocket(server);
 
-server.listen(env.PORT, () => {
-  logger.info(`Server running on http://localhost:${env.PORT}`);
+server.listen(env.PORT, "0.0.0.0", () => {
+  logger.info(`Server running on http://0.0.0.0:${env.PORT}`);
   logger.info(`Allowing frontend from ${env.CLIENT_URL}`);
 });
 
