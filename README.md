@@ -44,8 +44,6 @@ From preventing double allocation to managing maintenance workflows and resource
 
 **Database**
 - PostgreSQL
-
-**Other Tools**
 - Socket.io
 - JWT
 - bcrypt
