@@ -17,10 +17,10 @@ export const getMetrics = asyncHandler(async (_req: Request, res: Response) => {
     prisma.asset.count(),
     prisma.asset.count({ where: { status: AssetStatus.AVAILABLE } }),
     prisma.asset.count({ where: { status: AssetStatus.ALLOCATED } }),
-    prisma.asset.count({ where: { status: AssetStatus.MAINTENANCE } }),
+    prisma.asset.count({ where: { status: AssetStatus.UNDER_MAINTENANCE } }),
     prisma.assetAllocation.count({ where: { status: AllocationStatus.ALLOCATED } }),
-    prisma.maintenanceRecord.count({ where: { status: { in: [MaintenanceStatus.PENDING, MaintenanceStatus.IN_PROGRESS] } } }),
-    prisma.assetBooking.count({ where: { status: BookingStatus.CONFIRMED, endTime: { gte: new Date() } } })
+    prisma.maintenanceRequest.count({ where: { status: { in: [MaintenanceStatus.PENDING, MaintenanceStatus.IN_PROGRESS] } } }),
+    prisma.resourceBooking.count({ where: { status: { in: [BookingStatus.UPCOMING, BookingStatus.ONGOING] }, endTime: { gte: new Date() } } })
   ]);
 
   sendSuccess(res, {

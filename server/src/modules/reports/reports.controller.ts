@@ -46,7 +46,7 @@ export const getAuditReport = asyncHandler(async (req: Request, res: Response) =
 
   if (format === "csv") {
     const csvData = audits.map(a => ({
-      Cycle: a.cycle.name,
+      Cycle: a.cycle.id,
       AssetTag: a.asset.assetTag,
       AssignedTo: a.assignedTo.name,
       Status: a.status,

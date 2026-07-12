@@ -74,6 +74,13 @@ enum AuditStatus {
   CLOSED
 }
 
+enum AuditAssignmentStatus {
+  PENDING
+  VERIFIED
+  MISSING
+  DAMAGED
+}
+
 enum AuditItemStatus {
   VERIFIED
   MISSING
@@ -106,7 +113,6 @@ model Department {
   // Relations
   employees             Employee[]
   allocations           AssetAllocation[]
-  auditAssignments      AuditAssignment[]
   
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
@@ -178,7 +184,7 @@ model Asset {
   allocations           AssetAllocation[]
   maintenanceRequests   MaintenanceRequest[]
   maintenanceSchedules  MaintenanceSchedule[]
-  auditItems            AuditItem[]
+  auditAssignments      AuditAssignment[]
   bookings              ResourceBooking[]     // For shareable resources
   
   createdAt             DateTime              @default(now())
@@ -289,8 +295,7 @@ model AuditCycle {
   status                AuditStatus           @default(OPEN)
   
   // Relations
-  assignedAuditors      AuditAssignment[]
-  auditItems            AuditItem[]
+  assignments           AuditAssignment[]
   
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
@@ -302,36 +307,20 @@ model AuditCycle {
 
 model AuditAssignment {
   id                    String                @id @default(cuid())
-  auditCycleId          String
-  auditCycle            AuditCycle            @relation(fields: [auditCycleId], references: [id], onDelete: Cascade)
-  auditorId             String
-  auditor               Employee              @relation(fields: [auditorId], references: [id])
-  assignedDeptId        String?
-  assignedDept          Department?           @relation(fields: [assignedDeptId], references: [id], onDelete: SetNull)
-  
-  createdAt             DateTime              @default(now())
-
-  @@unique([auditCycleId, auditorId], name: "unique_audit_assignment")
-  @@index([auditorId])
-  @@map("audit_assignments")
-}
-
-model AuditItem {
-  id                    String                @id @default(cuid())
-  auditCycleId          String
-  auditCycle            AuditCycle            @relation(fields: [auditCycleId], references: [id], onDelete: Cascade)
+  cycleId               String
+  cycle                 AuditCycle            @relation(fields: [cycleId], references: [id], onDelete: Cascade)
   assetId               String
   asset                 Asset                 @relation(fields: [assetId], references: [id])
-  status                AuditItemStatus       @default(VERIFIED)
+  assignedToId          String
+  assignedTo            Employee              @relation(fields: [assignedToId], references: [id])
+  status                AuditAssignmentStatus @default(PENDING)
   notes                 String?
-  
+  completedAt           DateTime?
   createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
 
-  @@unique([auditCycleId, assetId], name: "unique_audit_item")
-  @@index([auditCycleId])
-  @@index([status])
-  @@map("audit_items")
+  @@unique([cycleId, assetId], name: "unique_audit_assignment")
+  @@index([assignedToId])
+  @@map("audit_assignments")
 }
 
 model Notification {

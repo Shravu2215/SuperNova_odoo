@@ -16,10 +16,10 @@ export async function createBooking(employeeId: string, input: any) {
     const start = new Date(input.startTime);
     const end = new Date(input.endTime);
     
-    const overlap = await tx.assetBooking.findFirst({
+    const overlap = await tx.resourceBooking.findFirst({
       where: {
-        assetId: input.assetId,
-        status: { in: [BookingStatus.CONFIRMED, BookingStatus.PENDING] },
+        resourceId: input.assetId,
+        status: { in: [BookingStatus.UPCOMING, BookingStatus.ONGOING] },
         OR: [
           { startTime: { lt: end }, endTime: { gt: start } }
         ]
@@ -30,14 +30,14 @@ export async function createBooking(employeeId: string, input: any) {
       throw new AppError(409, "CONFLICT", "Asset is already booked for this time period");
     }
 
-    const booking = await tx.assetBooking.create({
+    const booking = await tx.resourceBooking.create({
       data: {
-        assetId: input.assetId,
-        employeeId,
+        resourceId: input.assetId,
+        bookedByEmployeeId: employeeId,
         startTime: start,
         endTime: end,
-        purpose: input.purpose,
-        status: BookingStatus.CONFIRMED,
+        notes: input.purpose,
+        status: BookingStatus.UPCOMING,
       }
     });
 
@@ -55,36 +55,36 @@ export async function createBooking(employeeId: string, input: any) {
 
 export async function listBookings(filters: any) {
   const where: any = {};
-  if (filters.employeeId) where.employeeId = filters.employeeId;
-  if (filters.assetId) where.assetId = filters.assetId;
+  if (filters.employeeId) where.bookedByEmployeeId = filters.employeeId;
+  if (filters.assetId) where.resourceId = filters.assetId;
   if (filters.status) where.status = filters.status;
 
-  return prisma.assetBooking.findMany({ 
+  return prisma.resourceBooking.findMany({ 
     where,
-    include: { asset: true, employee: { select: { name: true, email: true } } },
+    include: { resource: true, bookedByEmployee: { select: { name: true, email: true } } },
     orderBy: { startTime: "asc" }
   });
 }
 
 export async function updateBookingStatus(id: string, actorId: string, actorRole: UserRole, status: BookingStatus) {
-  const booking = await prisma.assetBooking.findUnique({ where: { id } });
+  const booking = await prisma.resourceBooking.findUnique({ where: { id } });
   if (!booking) throw new AppError(404, "NOT_FOUND", "Booking not found");
 
-  if (booking.employeeId !== actorId && actorRole !== UserRole.ADMIN && actorRole !== UserRole.ASSET_MANAGER) {
+  if (booking.bookedByEmployeeId !== actorId && actorRole !== UserRole.ADMIN && actorRole !== UserRole.ASSET_MANAGER) {
     throw new AppError(403, "FORBIDDEN", "Not authorized to modify this booking");
   }
 
   return await prisma.$transaction(async (tx) => {
-    const updated = await tx.assetBooking.update({
+    const updated = await tx.resourceBooking.update({
       where: { id },
       data: { status }
     });
 
-    await logActivity(actorId, `BOOKING_${status}`, "ASSET", booking.assetId, { bookingId: id });
+    await logActivity(actorId, `BOOKING_${status}`, "ASSET", booking.resourceId, { bookingId: id });
     return updated;
   }).then(async (res) => {
     if (status === BookingStatus.CANCELLED) {
-      await notify(res.employeeId, NotificationType.BOOKING_CANCELLED, `Booking cancelled for asset ${res.assetId}`);
+      await notify(res.bookedByEmployeeId, NotificationType.BOOKING_CANCELLED, `Booking cancelled for asset ${res.resourceId}`);
       try {
         const io = getIO();
         emitGlobal(io, SocketEvent.BOOKING_CANCELLED, res);
