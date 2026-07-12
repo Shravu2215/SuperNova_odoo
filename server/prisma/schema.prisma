@@ -1,0 +1,385 @@
+// prisma/schema.prisma
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ===== ENUMS =====
+
+enum UserRole {
+  ADMIN
+  ASSET_MANAGER
+  DEPARTMENT_HEAD
+  EMPLOYEE
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  DEACTIVATED
+}
+
+enum DepartmentStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AssetStatus {
+  AVAILABLE
+  ALLOCATED
+  RESERVED
+  UNDER_MAINTENANCE
+  LOST
+  RETIRED
+  DISPOSED
+}
+
+enum AssetCondition {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  DAMAGED
+}
+
+enum AllocationStatus {
+  PENDING_APPROVAL
+  ALLOCATED
+  RETURNED
+  TRANSFER_REQUESTED
+}
+
+enum MaintenanceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum BookingStatus {
+  UPCOMING
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum AuditStatus {
+  OPEN
+  CLOSED
+}
+
+enum AuditItemStatus {
+  VERIFIED
+  MISSING
+  DAMAGED
+}
+
+enum NotificationType {
+  ASSET_ASSIGNED
+  MAINTENANCE_APPROVED
+  MAINTENANCE_REJECTED
+  BOOKING_CONFIRMED
+  BOOKING_CANCELLED
+  BOOKING_REMINDER
+  TRANSFER_APPROVED
+  TRANSFER_REJECTED
+  OVERDUE_RETURN
+  AUDIT_DISCREPANCY
+}
+
+// ===== CORE MODELS =====
+
+model Department {
+  id                    String                @id @default(cuid())
+  name                  String                @unique
+  parentDeptId          String?
+  parentDept            Department?           @relation("DepartmentHierarchy", fields: [parentDeptId], references: [id], onDelete: SetNull)
+  childDepts            Department[]          @relation("DepartmentHierarchy")
+  status                DepartmentStatus      @default(ACTIVE)
+  
+  // Relations
+  employees             Employee[]
+  allocations           AssetAllocation[]
+  auditAssignments      AuditAssignment[]
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@index([status])
+  @@index([parentDeptId])
+  @@map("departments")
+}
+
+model Employee {
+  id                    String                @id @default(cuid())
+  name                  String
+  email                 String                @unique
+  password              String                // bcrypt hashed
+  deptId                String
+  dept                  Department            @relation(fields: [deptId], references: [id])
+  role                  UserRole              @default(EMPLOYEE)
+  status                UserStatus            @default(ACTIVE)
+  
+  // Relations
+  allocations           AssetAllocation[]
+  bookings              ResourceBooking[]
+  maintenanceRequests   MaintenanceRequest[]
+  auditAssignments      AuditAssignment[]
+  notifications         Notification[]
+  activityLogs          ActivityLog[]
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@index([email])
+  @@index([deptId])
+  @@index([role])
+  @@index([status])
+  @@map("employees")
+}
+
+model AssetCategory {
+  id                    String                @id @default(cuid())
+  name                  String                @unique
+  description           String?
+  customFields          Json?                 // Flexibility for category-specific fields
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  
+  // Relations
+  assets                Asset[]
+
+  @@index([name])
+  @@map("asset_categories")
+}
+
+model Asset {
+  id                    String                @id @default(cuid())
+  assetTag              String                @unique @default(cuid()) // Auto-generated: AF-0001
+  serialNumber          String?               @unique
+  categoryId            String
+  category              AssetCategory         @relation(fields: [categoryId], references: [id])
+  status                AssetStatus           @default(AVAILABLE)
+  condition             AssetCondition        @default(GOOD)
+  location              String?
+  isShareable           Boolean               @default(false)
+  acquiredDate          DateTime?
+  acquiredCost          Float?
+  photoUrl              String?
+  description           String?
+  
+  // Relations
+  allocations           AssetAllocation[]
+  maintenanceRequests   MaintenanceRequest[]
+  maintenanceSchedules  MaintenanceSchedule[]
+  auditItems            AuditItem[]
+  bookings              ResourceBooking[]     // For shareable resources
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@index([assetTag])
+  @@index([status])
+  @@index([categoryId])
+  @@index([isShareable])
+  @@index([serialNumber])
+  @@map("assets")
+}
+
+model AssetAllocation {
+  id                    String                @id @default(cuid())
+  assetId               String
+  asset                 Asset                 @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  allocatedToEmployeeId String?
+  allocatedToEmployee   Employee?             @relation(fields: [allocatedToEmployeeId], references: [id], onDelete: SetNull)
+  allocatedToDeptId     String?
+  allocatedToDept       Department?           @relation(fields: [allocatedToDeptId], references: [id], onDelete: SetNull)
+  expectedReturnDate    DateTime?
+  actualReturnDate      DateTime?
+  status                AllocationStatus      @default(PENDING_APPROVAL)
+  returnConditionNotes  String?
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  // CRITICAL: Only ONE active allocation per asset
+  @@unique([assetId, status], name: "unique_active_allocation")
+  @@index([allocatedToEmployeeId])
+  @@index([allocatedToDeptId])
+  @@index([status])
+  @@index([expectedReturnDate])
+  @@map("asset_allocations")
+}
+
+model ResourceBooking {
+  id                    String                @id @default(cuid())
+  resourceId            String                // Asset ID that is shareable
+  resource              Asset                 @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  bookedByEmployeeId    String
+  bookedByEmployee      Employee              @relation(fields: [bookedByEmployeeId], references: [id])
+  startTime             DateTime
+  endTime               DateTime
+  status                BookingStatus         @default(UPCOMING)
+  notes                 String?
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  // For overlap queries
+  @@index([resourceId])
+  @@index([bookedByEmployeeId])
+  @@index([startTime])
+  @@index([endTime])
+  @@index([status])
+  @@map("resource_bookings")
+}
+
+model MaintenanceRequest {
+  id                    String                @id @default(cuid())
+  assetId               String
+  asset                 Asset                 @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  raisedByEmployeeId    String
+  raisedByEmployee      Employee              @relation(fields: [raisedByEmployeeId], references: [id])
+  description           String
+  priority              String                @default("MEDIUM") // LOW, MEDIUM, HIGH
+  photoUrl              String?
+  status                MaintenanceStatus     @default(PENDING)
+  approvedAt            DateTime?
+  technician            String?
+  completedAt           DateTime?
+  resolutionNotes       String?
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@index([assetId])
+  @@index([status])
+  @@index([priority])
+  @@index([raisedByEmployeeId])
+  @@map("maintenance_requests")
+}
+
+model MaintenanceSchedule {
+  id                    String                @id @default(cuid())
+  assetId               String
+  asset                 Asset                 @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  nextMaintenanceDate   DateTime
+  frequency             String                // "MONTHLY", "QUARTERLY", "YEARLY"
+  notes                 String?
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@index([assetId])
+  @@index([nextMaintenanceDate])
+  @@map("maintenance_schedules")
+}
+
+model AuditCycle {
+  id                    String                @id @default(cuid())
+  scopeDeptId           String?               // null = organization-wide
+  startDate             DateTime
+  endDate               DateTime
+  status                AuditStatus           @default(OPEN)
+  
+  // Relations
+  assignedAuditors      AuditAssignment[]
+  auditItems            AuditItem[]
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@index([status])
+  @@index([startDate])
+  @@map("audit_cycles")
+}
+
+model AuditAssignment {
+  id                    String                @id @default(cuid())
+  auditCycleId          String
+  auditCycle            AuditCycle            @relation(fields: [auditCycleId], references: [id], onDelete: Cascade)
+  auditorId             String
+  auditor               Employee              @relation(fields: [auditorId], references: [id])
+  assignedDeptId        String?
+  assignedDept          Department?           @relation(fields: [assignedDeptId], references: [id], onDelete: SetNull)
+  
+  createdAt             DateTime              @default(now())
+
+  @@unique([auditCycleId, auditorId], name: "unique_audit_assignment")
+  @@index([auditorId])
+  @@map("audit_assignments")
+}
+
+model AuditItem {
+  id                    String                @id @default(cuid())
+  auditCycleId          String
+  auditCycle            AuditCycle            @relation(fields: [auditCycleId], references: [id], onDelete: Cascade)
+  assetId               String
+  asset                 Asset                 @relation(fields: [assetId], references: [id])
+  status                AuditItemStatus       @default(VERIFIED)
+  notes                 String?
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@unique([auditCycleId, assetId], name: "unique_audit_item")
+  @@index([auditCycleId])
+  @@index([status])
+  @@map("audit_items")
+}
+
+model Notification {
+  id                    String                @id @default(cuid())
+  recipientId           String
+  recipient             Employee              @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  type                  NotificationType
+  message               String
+  metadata              Json?                 // For linking to relevant entities
+  isRead                Boolean               @default(false)
+  
+  createdAt             DateTime              @default(now())
+
+  @@index([recipientId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model ActivityLog {
+  id                    String                @id @default(cuid())
+  employeeId            String?
+  employee              Employee?             @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  action                String
+  entityType            String                // "ASSET", "ALLOCATION", "MAINTENANCE", etc.
+  entityId              String
+  details               Json?
+  
+  createdAt             DateTime              @default(now())
+
+  @@index([employeeId])
+  @@index([entityType])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+model AuditLog {
+  id                    String                @id @default(cuid())
+  timestamp             DateTime              @default(now())
+  action                String
+  table                 String
+  recordId              String
+  oldValue              Json?
+  newValue              Json?
+  userId                String?
+  
+  @@index([table])
+  @@index([recordId])
+  @@index([timestamp])
+  @@map("audit_logs")
+}
