@@ -10,10 +10,7 @@ generator client {
 }
 
 // ===== ENUMS =====
-<<<<<<< HEAD
 
-=======
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
 enum UserRole {
   ADMIN
   ASSET_MANAGER
@@ -96,11 +93,7 @@ enum NotificationType {
   AUDIT_DISCREPANCY
 }
 
-<<<<<<< HEAD
 // ===== CORE MODELS =====
-=======
-// ===== CORE ENTITIES =====
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
 
 model Department {
   id                    String                @id @default(cuid())
@@ -109,28 +102,18 @@ model Department {
   parentDept            Department?           @relation("DepartmentHierarchy", fields: [parentDeptId], references: [id], onDelete: SetNull)
   childDepts            Department[]          @relation("DepartmentHierarchy")
   status                DepartmentStatus      @default(ACTIVE)
-<<<<<<< HEAD
   
   // Relations
   employees             Employee[]
   allocations           AssetAllocation[]
   auditAssignments      AuditAssignment[]
   
-=======
-
-  employees             Employee[]
-  allocations           AssetAllocation[]
-  auditAssignments      AuditAssignment[]
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
 
   @@index([status])
   @@index([parentDeptId])
-<<<<<<< HEAD
   @@map("departments")
-=======
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
 }
 
 model Employee {
@@ -142,22 +125,15 @@ model Employee {
   dept                  Department            @relation(fields: [deptId], references: [id])
   role                  UserRole              @default(EMPLOYEE)
   status                UserStatus            @default(ACTIVE)
-<<<<<<< HEAD
   
   // Relations
-=======
-
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
   allocations           AssetAllocation[]
   bookings              ResourceBooking[]
   maintenanceRequests   MaintenanceRequest[]
   auditAssignments      AuditAssignment[]
   notifications         Notification[]
   activityLogs          ActivityLog[]
-<<<<<<< HEAD
   
-=======
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
 
@@ -165,16 +141,12 @@ model Employee {
   @@index([deptId])
   @@index([role])
   @@index([status])
-<<<<<<< HEAD
   @@map("employees")
-=======
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
 }
 
 model AssetCategory {
   id                    String                @id @default(cuid())
   name                  String                @unique
-<<<<<<< HEAD
   description           String?
   customFields          Json?                 // Flexibility for category-specific fields
   createdAt             DateTime              @default(now())
@@ -185,26 +157,12 @@ model AssetCategory {
 
   @@index([name])
   @@map("asset_categories")
-=======
-  customFields          Json?                 // {"warrantyPeriod": "24 months", ...}
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-
-  assets                Asset[]
-
-  @@index([name])
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
 }
 
 model Asset {
   id                    String                @id @default(cuid())
-<<<<<<< HEAD
   assetTag              String                @unique @default(cuid()) // Auto-generated: AF-0001
   serialNumber          String?               @unique
-=======
-  assetTag              String                @unique // Auto-generated: AF-0001
-  serialNumber          String?
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
   categoryId            String
   category              AssetCategory         @relation(fields: [categoryId], references: [id])
   status                AssetStatus           @default(AVAILABLE)
@@ -214,7 +172,6 @@ model Asset {
   acquiredDate          DateTime?
   acquiredCost          Float?
   photoUrl              String?
-<<<<<<< HEAD
   description           String?
   
   // Relations
@@ -224,14 +181,6 @@ model Asset {
   auditItems            AuditItem[]
   bookings              ResourceBooking[]     // For shareable resources
   
-=======
-
-  allocations           AssetAllocation[]
-  maintenanceRequests   MaintenanceRequest[]
-  auditItems            AuditItem[]
-  resourceBookings      ResourceBooking[]
-  maintenanceSchedules  MaintenanceSchedule[]
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
 
@@ -239,11 +188,8 @@ model Asset {
   @@index([status])
   @@index([categoryId])
   @@index([isShareable])
-<<<<<<< HEAD
   @@index([serialNumber])
   @@map("assets")
-=======
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
 }
 
 model AssetAllocation {
@@ -258,25 +204,16 @@ model AssetAllocation {
   actualReturnDate      DateTime?
   status                AllocationStatus      @default(PENDING_APPROVAL)
   returnConditionNotes  String?
-<<<<<<< HEAD
   
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
 
   // CRITICAL: Only ONE active allocation per asset
   @@unique([assetId, status], name: "unique_active_allocation")
-=======
-
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-
-  @@unique([assetId, status]) // Only ONE active allocation per asset
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
   @@index([allocatedToEmployeeId])
   @@index([allocatedToDeptId])
   @@index([status])
   @@index([expectedReturnDate])
-<<<<<<< HEAD
   @@map("asset_allocations")
 }
 
@@ -301,8 +238,6 @@ model ResourceBooking {
   @@index([endTime])
   @@index([status])
   @@map("resource_bookings")
-=======
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
 }
 
 model MaintenanceRequest {
@@ -319,42 +254,15 @@ model MaintenanceRequest {
   technician            String?
   completedAt           DateTime?
   resolutionNotes       String?
-<<<<<<< HEAD
   
-=======
-
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
 
   @@index([assetId])
   @@index([status])
   @@index([priority])
-<<<<<<< HEAD
   @@index([raisedByEmployeeId])
   @@map("maintenance_requests")
-=======
-}
-
-model ResourceBooking {
-  id                    String                @id @default(cuid())
-  resourceId            String                // Asset ID that is shareable
-  resource              Asset                 @relation(fields: [resourceId], references: [id], onDelete: Cascade)
-  bookedByEmployeeId    String
-  bookedByEmployee      Employee              @relation(fields: [bookedByEmployeeId], references: [id])
-  startTime             DateTime
-  endTime               DateTime
-  status                BookingStatus         @default(UPCOMING)
-  notes                 String?
-
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-
-  @@index([resourceId])
-  @@index([bookedByEmployeeId])
-  @@index([startTime, endTime]) // For overlap queries
-  @@index([status])
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
 }
 
 model MaintenanceSchedule {
@@ -364,20 +272,13 @@ model MaintenanceSchedule {
   nextMaintenanceDate   DateTime
   frequency             String                // "MONTHLY", "QUARTERLY", "YEARLY"
   notes                 String?
-<<<<<<< HEAD
   
-=======
-
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
 
   @@index([assetId])
   @@index([nextMaintenanceDate])
-<<<<<<< HEAD
   @@map("maintenance_schedules")
-=======
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
 }
 
 model AuditCycle {
@@ -386,26 +287,17 @@ model AuditCycle {
   startDate             DateTime
   endDate               DateTime
   status                AuditStatus           @default(OPEN)
-<<<<<<< HEAD
   
   // Relations
   assignedAuditors      AuditAssignment[]
   auditItems            AuditItem[]
   
-=======
-  assignedAuditors      AuditAssignment[]
-  auditItems            AuditItem[]
-
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
 
   @@index([status])
   @@index([startDate])
-<<<<<<< HEAD
   @@map("audit_cycles")
-=======
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
 }
 
 model AuditAssignment {
@@ -416,20 +308,12 @@ model AuditAssignment {
   auditor               Employee              @relation(fields: [auditorId], references: [id])
   assignedDeptId        String?
   assignedDept          Department?           @relation(fields: [assignedDeptId], references: [id], onDelete: SetNull)
-<<<<<<< HEAD
   
   createdAt             DateTime              @default(now())
 
   @@unique([auditCycleId, auditorId], name: "unique_audit_assignment")
   @@index([auditorId])
   @@map("audit_assignments")
-=======
-
-  createdAt             DateTime              @default(now())
-
-  @@unique([auditCycleId, auditorId])
-  @@index([auditorId])
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
 }
 
 model AuditItem {
@@ -440,7 +324,6 @@ model AuditItem {
   asset                 Asset                 @relation(fields: [assetId], references: [id])
   status                AuditItemStatus       @default(VERIFIED)
   notes                 String?
-<<<<<<< HEAD
   
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
@@ -449,15 +332,6 @@ model AuditItem {
   @@index([auditCycleId])
   @@index([status])
   @@map("audit_items")
-=======
-
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-
-  @@unique([auditCycleId, assetId])
-  @@index([auditCycleId])
-  @@index([status])
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
 }
 
 model Notification {
@@ -468,20 +342,13 @@ model Notification {
   message               String
   metadata              Json?                 // For linking to relevant entities
   isRead                Boolean               @default(false)
-<<<<<<< HEAD
   
-=======
-
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
   createdAt             DateTime              @default(now())
 
   @@index([recipientId])
   @@index([isRead])
   @@index([createdAt])
-<<<<<<< HEAD
   @@map("notifications")
-=======
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
 }
 
 model ActivityLog {
@@ -492,20 +359,13 @@ model ActivityLog {
   entityType            String                // "ASSET", "ALLOCATION", "MAINTENANCE", etc.
   entityId              String
   details               Json?
-<<<<<<< HEAD
   
-=======
-
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
   createdAt             DateTime              @default(now())
 
   @@index([employeeId])
   @@index([entityType])
   @@index([createdAt])
-<<<<<<< HEAD
   @@map("activity_logs")
-=======
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd
 }
 
 model AuditLog {
@@ -517,17 +377,9 @@ model AuditLog {
   oldValue              Json?
   newValue              Json?
   userId                String?
-<<<<<<< HEAD
   
   @@index([table])
   @@index([recordId])
   @@index([timestamp])
   @@map("audit_logs")
 }
-=======
-
-  @@index([table])
-  @@index([recordId])
-  @@index([timestamp])
-}
->>>>>>> 22ff56196794b5598af37e2bf2a7bb9cf3f9b2cd

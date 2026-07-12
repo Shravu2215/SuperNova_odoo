@@ -1,10 +1,3 @@
-/*
-  Warnings:
-
-  - You are about to drop the `ExampleTask` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `User` table. If the table is not empty, all the data it contains will be lost.
-
-*/
 -- CreateEnum
 CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'ASSET_MANAGER', 'DEPARTMENT_HEAD', 'EMPLOYEE');
 
@@ -37,18 +30,6 @@ CREATE TYPE "AuditItemStatus" AS ENUM ('VERIFIED', 'MISSING', 'DAMAGED');
 
 -- CreateEnum
 CREATE TYPE "NotificationType" AS ENUM ('ASSET_ASSIGNED', 'MAINTENANCE_APPROVED', 'MAINTENANCE_REJECTED', 'BOOKING_CONFIRMED', 'BOOKING_CANCELLED', 'BOOKING_REMINDER', 'TRANSFER_APPROVED', 'TRANSFER_REJECTED', 'OVERDUE_RETURN', 'AUDIT_DISCREPANCY');
-
--- DropForeignKey
-ALTER TABLE "ExampleTask" DROP CONSTRAINT "ExampleTask_userId_fkey";
-
--- DropTable
-DROP TABLE "ExampleTask";
-
--- DropTable
-DROP TABLE "User";
-
--- DropEnum
-DROP TYPE "TaskStatus";
 
 -- CreateTable
 CREATE TABLE "departments" (
